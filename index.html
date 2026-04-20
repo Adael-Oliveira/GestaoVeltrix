@@ -1,0 +1,814 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#0B0F1A">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>Despacho Guincho</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&display=swap" rel="stylesheet">
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:          #0B0F1A;
+      --surface:     #141824;
+      --surface2:    #1C2235;
+      --border:      rgba(255,255,255,0.07);
+      --border-md:   rgba(255,255,255,0.14);
+      --text:        #F0F4FF;
+      --muted:       #8892A4;
+      --subtle:      #4B5468;
+      --accent:      #F59E0B;
+      --r-sm:        8px;
+      --r-md:        12px;
+      --r-lg:        16px;
+    }
+
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'DM Sans', system-ui, sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+    #app { min-height: 100vh; }
+
+    /* ── Scrollbar ── */
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-thumb { background: var(--border-md); border-radius: 2px; }
+
+    /* ── Animations ── */
+    @keyframes spin      { to { transform: rotate(360deg); } }
+    @keyframes fadeUp    { from { opacity:0; transform:translateY(14px); } to { opacity:1; transform:translateY(0); } }
+    @keyframes slideDown { from { opacity:0; transform:translateY(-8px); } to { opacity:1; transform:translateY(0); } }
+    @keyframes toastIn   { from { opacity:0; transform:translateY(-10px) scale(.96); } to { opacity:1; transform:translateY(0) scale(1); } }
+    @keyframes pulse     { 0%,100%{ opacity:1; } 50%{ opacity:.3; } }
+
+    /* ── Toast ── */
+    #toast-container {
+      position: fixed; top: 14px; left: 50%;
+      transform: translateX(-50%);
+      z-index: 9999; width: min(92vw, 380px);
+      display: flex; flex-direction: column; gap: 8px;
+      pointer-events: none;
+    }
+    .toast {
+      background: var(--surface2);
+      border: 1px solid rgba(245,158,11,.55);
+      border-radius: var(--r-md);
+      padding: 12px 16px;
+      display: flex; align-items: flex-start; gap: 10px;
+      animation: toastIn .3s ease;
+      pointer-events: all;
+      transition: opacity .35s;
+    }
+    .toast-icon { font-size: 18px; flex-shrink: 0; line-height: 1.2; }
+    .toast-title { font-size: 13px; font-weight: 600; color: var(--text); }
+    .toast-body { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+    /* ── Notif bar ── */
+    .notif-bar {
+      background: rgba(245,158,11,.1);
+      border-bottom: 1px solid rgba(245,158,11,.2);
+      padding: 10px 18px;
+      display: flex; align-items: center;
+      justify-content: space-between; gap: 12px;
+    }
+    .notif-bar p { font-size: 12px; color: var(--accent); }
+    .notif-bar button {
+      background: var(--accent); color: #0B0F1A;
+      border: none; padding: 6px 14px; border-radius: var(--r-sm);
+      font-size: 12px; font-weight: 700; cursor: pointer;
+      font-family: inherit; white-space: nowrap; flex-shrink: 0;
+    }
+
+    /* ── Header ── */
+    .hdr {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 13px 18px;
+      position: sticky; top: 0; z-index: 100;
+    }
+    .hdr-inner {
+      max-width: 720px; margin: 0 auto;
+      display: flex; align-items: center;
+      justify-content: space-between; gap: 12px;
+    }
+    .hdr-left  { display: flex; align-items: center; gap: 10px; }
+    .hdr-title { font-size: 16px; font-weight: 700; }
+    .hdr-sub   { font-size: 11px; color: var(--muted); margin-top: 2px; display:flex; align-items:center; gap:5px; }
+    .status-dot { width:7px; height:7px; border-radius:50%; flex-shrink:0; }
+    .btn-ghost {
+      background: none; border: 1px solid var(--border-md);
+      color: var(--muted); padding: 6px 12px;
+      border-radius: var(--r-sm); cursor: pointer;
+      font-size: 12px; font-family: inherit; transition: all .15s;
+    }
+    .btn-ghost:hover { color: var(--text); }
+
+    /* ── Main ── */
+    .main { max-width: 720px; margin: 0 auto; padding: 16px 14px 80px; }
+
+    /* ── Stats ── */
+    .stats {
+      display: grid; grid-template-columns: repeat(4,1fr);
+      gap: 10px; margin-bottom: 16px;
+    }
+    .stat {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--r-lg); padding: 14px 10px; text-align: center;
+    }
+    .stat-n { font-size: 26px; font-weight: 700; line-height: 1; }
+    .stat-l {
+      font-size: 10px; font-weight: 600; color: var(--muted);
+      margin-top: 4px; text-transform: uppercase; letter-spacing: .06em;
+    }
+
+    /* ── Section Label ── */
+    .sec-label {
+      font-size: 11px; font-weight: 700; color: var(--subtle);
+      text-transform: uppercase; letter-spacing: .08em; margin-bottom: 8px;
+    }
+    .sec-block { margin-bottom: 20px; }
+
+    /* ── Driver Section Divider ── */
+    .driver-sec {
+      display: flex; align-items: center;
+      gap: 10px; padding: 10px 0 6px;
+    }
+    .driver-sec-line { flex:1; height:1px; background:var(--border); }
+    .driver-sec-lbl {
+      font-size: 11px; font-weight: 700; color: var(--subtle);
+      text-transform: uppercase; letter-spacing: .08em; white-space: nowrap;
+    }
+
+    /* ── Task Card ── */
+    .card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-left-width: 3px; border-radius: var(--r-lg);
+      padding: 15px 17px; margin-bottom: 10px;
+      transition: opacity .2s;
+    }
+    .card.done { opacity: .55; }
+
+    /* Progress bar */
+    .prog { display:flex; align-items:center; margin-bottom:11px; }
+    .prog-dot {
+      width: 9px; height: 9px; border-radius: 50%; flex-shrink:0;
+      border: 2px solid; transition: all .3s;
+    }
+    .prog-line { flex:1; height:2px; transition: background .3s; }
+
+    /* Badges */
+    .badges { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:8px; }
+    .badge {
+      display: inline-flex; align-items:center;
+      padding: 3px 9px; border-radius: 20px;
+      font-size: 11px; font-weight: 600;
+    }
+
+    /* Card text */
+    .card-title { font-size:16px; font-weight:700; margin-bottom:4px; }
+    .card-addr  { font-size:13px; color:var(--muted); display:flex; gap:5px; margin-bottom:4px; }
+    .card-notes { font-size:12px; color:var(--subtle); font-style:italic; margin-bottom:4px; }
+    .card-time  {
+      font-size:12px; font-weight:600; color:#92400E;
+      background:rgba(254,243,199,.1); padding:4px 10px;
+      border-radius:6px; display:inline-block; margin-bottom:6px;
+    }
+
+    /* ── Action button (driver) ── */
+    .action-btn {
+      width:100%; margin-top:12px;
+      padding:14px 16px; border-radius:var(--r-md); border:none;
+      cursor:pointer; font-family:inherit; font-weight:700; font-size:14px;
+      display:flex; flex-direction:column; align-items:center; gap:3px;
+      transition: opacity .15s, transform .1s;
+    }
+    .action-btn:active { transform:scale(.98); opacity:.85; }
+    .action-btn-sub { font-size:11px; font-weight:400; opacity:.75; }
+
+    /* ── Advance button (team) ── */
+    .adv-btn {
+      width:100%; margin-top:8px; padding:9px;
+      border-radius:10px; border:1px solid transparent;
+      background:transparent; cursor:pointer;
+      font-family:inherit; font-weight:600; font-size:12px;
+      transition: opacity .15s;
+    }
+    .adv-btn:hover { opacity:.8; }
+
+    /* ── Add / Delete ── */
+    .add-btn {
+      width:100%; padding:14px; border-radius:var(--r-lg); border:none;
+      background:var(--accent); color:#0B0F1A;
+      font-family:inherit; font-weight:700; font-size:14px;
+      cursor:pointer; margin-bottom:16px; transition:opacity .15s;
+    }
+    .add-btn:hover { opacity:.9; }
+    .del-btn {
+      background:none; border:none; color:var(--subtle);
+      cursor:pointer; font-size:14px; padding:2px 5px;
+      border-radius:4px; line-height:1; flex-shrink:0;
+      transition: color .15s;
+    }
+    .del-btn:hover { color: #F87171; }
+
+    /* ── Form ── */
+    .form-card {
+      background:var(--surface); border:1px solid var(--border);
+      border-radius:18px; padding:20px; margin-bottom:16px;
+      animation: slideDown .2s ease;
+    }
+    .form-hd { font-size:15px; font-weight:700; margin-bottom:16px; }
+    .form-grid { display:grid; gap:12px; }
+    .form-group label {
+      display:block; font-size:11px; font-weight:600;
+      color:var(--muted); text-transform:uppercase;
+      letter-spacing:.08em; margin-bottom:5px;
+    }
+    .form-input, .form-select {
+      width:100%; padding:11px 14px; border-radius:10px;
+      border:1px solid var(--border-md);
+      background:rgba(255,255,255,.04);
+      color:var(--text); font-family:inherit; font-size:14px;
+      outline:none; transition:border-color .15s;
+    }
+    .form-input:focus, .form-select:focus { border-color:var(--accent); }
+    .form-select option { background:#1C2235; }
+    .form-btns { display:flex; gap:10px; }
+    .btn-cancel {
+      flex:1; padding:11px; border-radius:var(--r-md);
+      border:1px solid var(--border); background:none;
+      color:var(--muted); font-family:inherit; font-size:13px; cursor:pointer;
+    }
+    .btn-submit {
+      flex:2; padding:11px; border-radius:var(--r-md); border:none;
+      background:var(--accent); color:#0B0F1A;
+      font-family:inherit; font-weight:700; font-size:13px; cursor:pointer;
+    }
+
+    /* ── Role select ── */
+    .role-screen {
+      min-height:100vh; display:flex; flex-direction:column;
+      align-items:center; justify-content:center; padding:24px;
+      animation: fadeUp .4s ease;
+    }
+    .role-logo  { font-size:46px; margin-bottom:14px; }
+    .role-title { font-size:26px; font-weight:700; margin-bottom:8px; text-align:center; }
+    .role-sub   { font-size:15px; color:var(--muted); margin-bottom:36px; text-align:center; }
+    .role-cards { width:100%; max-width:440px; display:flex; flex-direction:column; gap:14px; }
+    .role-card  {
+      background:var(--surface); border:1px solid var(--border);
+      border-radius:var(--r-lg); padding:22px 24px; cursor:pointer;
+      display:flex; align-items:center; gap:18px;
+      text-align:left; font-family:inherit;
+      transition: border-color .18s, background .18s;
+    }
+    .role-card:hover { background:var(--surface2); }
+    .role-card.driver:hover { border-color:var(--accent); }
+    .role-card.team:hover   { border-color:#60A5FA; }
+    .role-card-ico  { font-size:36px; flex-shrink:0; }
+    .role-card-name { font-size:17px; font-weight:700; }
+    .role-card-desc { font-size:13px; color:var(--muted); margin-top:3px; }
+    .role-card-arr  { margin-left:auto; font-size:22px; }
+    .role-hint { font-size:12px; color:var(--subtle); margin-top:20px; }
+
+    /* ── Setup screen ── */
+    .setup-screen {
+      min-height:100vh; display:flex; flex-direction:column;
+      align-items:center; justify-content:center; padding:24px;
+    }
+    .setup-box {
+      background:var(--surface); border:1px solid var(--border);
+      border-radius:var(--r-lg); padding:24px; max-width:440px; width:100%;
+    }
+    .setup-box p { color:var(--muted); font-size:13px; line-height:1.9; }
+    .setup-box a { color:var(--accent); }
+    code { background:var(--surface2); padding:2px 6px; border-radius:4px; color:var(--accent); font-size:12px; }
+
+    /* ── Done banner ── */
+    .done-banner {
+      text-align:center; color:#4ADE80; font-size:13px; font-weight:600;
+      margin-top:10px; padding:10px;
+      background:rgba(5,46,22,.35); border-radius:10px;
+    }
+
+    /* ── Empty ── */
+    .empty { text-align:center; padding:48px 0; }
+    .empty-ico   { font-size:42px; margin-bottom:12px; }
+    .empty-title { font-size:15px; font-weight:600; color:var(--muted); }
+    .empty-desc  { font-size:13px; color:var(--subtle); margin-top:6px; }
+
+    /* ── Divider ── */
+    hr.div { border:none; border-top:1px solid var(--border); margin:16px 0; }
+
+    /* ── Spinner ── */
+    .spinner-screen {
+      min-height:100vh; display:flex; align-items:center;
+      justify-content:center; flex-direction:column; gap:14px;
+    }
+    .spinner {
+      width:40px; height:40px; border-radius:50%;
+      border:3px solid var(--border); border-top-color:var(--accent);
+      animation: spin .8s linear infinite;
+    }
+
+    /* ── Responsive ── */
+    @media (max-width: 500px) {
+      .stats { grid-template-columns: repeat(2,1fr); }
+      .hdr  { padding:12px 14px; }
+      .main { padding:12px 10px 80px; }
+      .card { padding:13px 14px; }
+      .role-card { padding:18px 16px; }
+      .role-card-ico { font-size:30px; }
+    }
+  </style>
+</head>
+<body>
+
+<div id="app">
+  <div class="spinner-screen">
+    <div class="spinner"></div>
+    <p style="color:var(--muted);font-size:14px;">Conectando ao sistema...</p>
+  </div>
+</div>
+
+<div id="toast-container"></div>
+
+<!-- Firebase SDKs (compat) -->
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+
+<script>
+'use strict';
+
+/* ═══════════════════════════════════════════════════════════════
+   CONFIGURAÇÃO DO FIREBASE
+   1. Crie um projeto em https://console.firebase.google.com
+   2. Ative o Realtime Database (região us-central1)
+   3. Nas regras do banco use:  { "rules": { ".read": true, ".write": true } }
+   4. Vá em Configurações do Projeto → Seus apps → Web e copie as credenciais
+   ═══════════════════════════════════════════════════════════════ */
+const firebaseConfig = {
+  apiKey:            "SUA_API_KEY",
+  authDomain:        "SEU_PROJETO.firebaseapp.com",
+  databaseURL:       "https://SEU_PROJETO-default-rtdb.firebaseio.com",
+  projectId:         "SEU_PROJETO_ID",
+  storageBucket:     "SEU_PROJETO.appspot.com",
+  messagingSenderId: "SEU_SENDER_ID",
+  appId:             "SEU_APP_ID"
+};
+
+/* ─── Constants ─────────────────────────────────────────────── */
+const STATUS = {
+  novo:        { label:'Novo',        accent:'#F59E0B', pill:'#78350F', pillBg:'#FEF3C7' },
+  visualizado: { label:'Visualizado', accent:'#60A5FA', pill:'#1D4ED8', pillBg:'#DBEAFE' },
+  checkin:     { label:'Em Rota',     accent:'#C084FC', pill:'#7E22CE', pillBg:'#F3E8FF' },
+  concluido:   { label:'Concluído',   accent:'#4ADE80', pill:'#166534', pillBg:'#DCFCE7' },
+};
+const STEPS = ['novo','visualizado','checkin','concluido'];
+const NEXT  = { novo:'visualizado', visualizado:'checkin', checkin:'concluido' };
+const DA    = {
+  novo:        { label:'Confirmar recebimento',           sub:'Marcar que você viu este chamado'       },
+  visualizado: { label:'Check-in — Cheguei no local!',    sub:'Avisar que chegou na origem'            },
+  checkin:     { label:'Disponível — Serviço Concluído!', sub:'Finalizar e liberar para o próximo'     },
+};
+const NOTIF_MSGS = {
+  novo_task:   (t) => ({ icon:'📋', title:'Novo chamado adicionado',   body:`${t.title} — ${t.address}` }),
+  visualizado: (t) => ({ icon:'👁',  title:'Chamado visualizado',       body:`Motorista confirmou: ${t.title}` }),
+  checkin:     (t) => ({ icon:'📍', title:'Motorista chegou no local!', body:t.title }),
+  concluido:   (t) => ({ icon:'✅', title:'Serviço concluído!',         body:`${t.title} — disponível` }),
+  removed:     (t) => ({ icon:'🗑',  title:'Chamado removido',          body:t.title }),
+};
+
+/* ─── State ─────────────────────────────────────────────────── */
+let tasks        = {};
+let role         = localStorage.getItem('guincho_role') || null;
+let prevSnap     = null;
+let skipNextNotif = false;
+let showForm     = false;
+let formData     = emptyForm();
+
+function emptyForm() {
+  return { title:'', address:'', type:'nao_agendado', datetime:'', notes:'' };
+}
+
+/* ─── Helpers ───────────────────────────────────────────────── */
+function esc(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function fmtDT(dt) {
+  if (!dt) return '';
+  return new Date(dt).toLocaleString('pt-BR', {
+    weekday:'short', day:'2-digit', month:'2-digit',
+    hour:'2-digit', minute:'2-digit'
+  });
+}
+function taskArr() {
+  return Object.values(tasks);
+}
+function sorted(arr) {
+  return [...arr].sort((a,b) => {
+    const ac = a.status==='concluido'?1:0, bc = b.status==='concluido'?1:0;
+    if (ac!==bc) return ac-bc;
+    if (a.type!==b.type) return a.type==='agendado'?-1:1;
+    if (a.type==='agendado' && a.datetime && b.datetime) return new Date(a.datetime)-new Date(b.datetime);
+    return (a.createdAt||0)-(b.createdAt||0);
+  });
+}
+
+/* ─── HTML builders ─────────────────────────────────────────── */
+function badge(text, fg, bg) {
+  return `<span class="badge" style="color:${fg};background:${bg};">${esc(text)}</span>`;
+}
+function typeBadge(type) {
+  return type==='agendado'
+    ? badge('📅 Agendado','#0F6E56','#E1F5EE')
+    : badge('⚡ Imediato','#993C1D','#FAECE7');
+}
+function statusBadge(s) {
+  const c=STATUS[s]; return badge(c.label,c.pill,c.pillBg);
+}
+function progressBar(status) {
+  const idx = STEPS.indexOf(status);
+  let h = '<div class="prog">';
+  STEPS.forEach((s,i) => {
+    const done = i<=idx, c = STATUS[s];
+    h += `<div class="prog-dot" style="background:${done?c.accent:'rgba(255,255,255,.09)'};border-color:${done?c.accent:'rgba(255,255,255,.16)'};" title="${c.label}"></div>`;
+    if (i < STEPS.length-1)
+      h += `<div class="prog-line" style="background:${i<idx?STATUS[STEPS[i]].accent:'rgba(255,255,255,.07)'};"></div>`;
+  });
+  return h+'</div>';
+}
+
+function driverCard(t) {
+  const cfg = STATUS[t.status], done = t.status==='concluido', da = DA[t.status];
+  const timeHtml  = t.type==='agendado'&&t.datetime ? `<div class="card-time">🕐 ${fmtDT(t.datetime)}</div>` : '';
+  const notesHtml = t.notes ? `<div class="card-notes">${esc(t.notes)}</div>` : '';
+  const actionHtml = !done&&da
+    ? `<button class="action-btn" onclick="advance('${esc(t.id)}')" style="background:${cfg.accent};color:#0B0F1A;">
+         ${esc(da.label)}<span class="action-btn-sub">${esc(da.sub)}</span>
+       </button>` : '';
+  const doneBanner = done ? `<div class="done-banner">✓ Serviço concluído</div>` : '';
+  return `
+    <div class="card ${done?'done':''}" style="border-left-color:${cfg.accent};">
+      ${progressBar(t.status)}
+      <div class="badges">${typeBadge(t.type)}${statusBadge(t.status)}</div>
+      <div class="card-title">${esc(t.title)}</div>
+      <div class="card-addr"><span>📍</span>${esc(t.address)}</div>
+      ${notesHtml}${timeHtml}${actionHtml}${doneBanner}
+    </div>`;
+}
+
+function teamCard(t) {
+  const cfg = STATUS[t.status], done = t.status==='concluido';
+  const nextS = NEXT[t.status], nextCfg = nextS?STATUS[nextS]:null;
+  const timeHtml  = t.type==='agendado'&&t.datetime ? `<div class="card-time">🕐 ${fmtDT(t.datetime)}</div>` : '';
+  const notesHtml = t.notes ? `<div class="card-notes">${esc(t.notes)}</div>` : '';
+  const advHtml   = !done&&nextCfg
+    ? `<button class="adv-btn" onclick="advance('${esc(t.id)}')"
+         style="color:${cfg.accent};border-color:${cfg.accent}44;background:${cfg.accent}11;">
+         Avançar → ${nextCfg.label}
+       </button>` : '';
+  return `
+    <div class="card ${done?'done':''}" style="border-left-color:${cfg.accent};">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:8px;">
+        <div class="badges" style="margin-bottom:0;">${typeBadge(t.type)}${statusBadge(t.status)}</div>
+        <button class="del-btn" onclick="removeTask('${esc(t.id)}')">✕</button>
+      </div>
+      ${progressBar(t.status)}
+      <div class="card-title">${esc(t.title)}</div>
+      <div class="card-addr"><span>📍</span>${esc(t.address)}</div>
+      ${notesHtml}${timeHtml}${advHtml}
+    </div>`;
+}
+
+function driverSec(label) {
+  return `<div class="driver-sec">
+    <div class="driver-sec-line"></div>
+    <div class="driver-sec-lbl">${label}</div>
+    <div class="driver-sec-line"></div>
+  </div>`;
+}
+
+function notifBarHtml() {
+  if (!('Notification' in window) || Notification.permission !== 'default') return '';
+  return `<div class="notif-bar">
+    <p>🔔 Ative notificações para receber atualizações em tempo real</p>
+    <button onclick="requestNotif()">Ativar</button>
+  </div>`;
+}
+
+/* ─── Views ─────────────────────────────────────────────────── */
+function viewRoleSelect() {
+  return `<div class="role-screen">
+    <div class="role-logo">🚛</div>
+    <h1 class="role-title">Despacho Guincho</h1>
+    <p class="role-sub">Quem é você nessa operação?</p>
+    <div class="role-cards">
+      <button class="role-card driver" onclick="selectRole('driver')">
+        <span class="role-card-ico">🧑‍✈️</span>
+        <div>
+          <div class="role-card-name">Sou o Motorista</div>
+          <div class="role-card-desc">Ver chamados, fazer check-in e finalizar serviços</div>
+        </div>
+        <span class="role-card-arr" style="color:var(--accent);">›</span>
+      </button>
+      <button class="role-card team" onclick="selectRole('team')">
+        <span class="role-card-ico">👥</span>
+        <div>
+          <div class="role-card-name">Sou da Equipe</div>
+          <div class="role-card-desc">Adicionar chamados e acompanhar o motorista em tempo real</div>
+        </div>
+        <span class="role-card-arr" style="color:#60A5FA;">›</span>
+      </button>
+    </div>
+    <p class="role-hint">Dados sincronizados em tempo real via Firebase</p>
+  </div>`;
+}
+
+function viewSetup() {
+  return `<div class="setup-screen">
+    <div style="text-align:center;margin-bottom:28px;">
+      <div style="font-size:44px;margin-bottom:12px;">⚙️</div>
+      <h1 style="font-size:22px;font-weight:700;">Configure o Firebase</h1>
+      <p style="color:var(--muted);font-size:14px;margin-top:8px;">O sistema precisa das credenciais para funcionar</p>
+    </div>
+    <div class="setup-box">
+      <p>
+        1. Crie um projeto em <a href="https://console.firebase.google.com" target="_blank">console.firebase.google.com</a><br>
+        2. Ative o <strong style="color:var(--text);">Realtime Database</strong> (modo de teste)<br>
+        3. Nas regras do banco, use:<br>
+           <code>{ "rules": { ".read": true, ".write": true } }</code><br>
+        4. Vá em <em style="color:var(--text);">Configurações → Seus apps → Web</em><br>
+        5. Copie as credenciais para o <code>firebaseConfig</code> no <code>index.html</code><br>
+        6. Faça deploy no GitHub Pages
+      </p>
+    </div>
+  </div>`;
+}
+
+function viewDriver() {
+  const all  = sorted(taskArr());
+  const agendados  = all.filter(t => t.type==='agendado'     && t.status!=='concluido');
+  const imediatos  = all.filter(t => t.type==='nao_agendado' && t.status!=='concluido');
+  const concluidos = all.filter(t => t.status==='concluido');
+  const active = all.filter(t => t.status!=='concluido');
+  const inRota = all.some(t => t.status==='checkin');
+  const hasNew = all.some(t => t.status==='novo');
+  const dotColor = inRota ? '#C084FC' : active.length ? '#F59E0B' : '#4ADE80';
+  const dotAnim  = hasNew ? 'animation:pulse 1.5s infinite;' : '';
+  const statusTxt = inRota ? 'Em rota' : active.length ? 'Chamados pendentes' : 'Disponível';
+
+  let body = '';
+  if (!all.length) {
+    body = `<div class="empty"><div class="empty-ico">✓</div><div class="empty-title">Tudo livre por enquanto!</div><div class="empty-desc">A equipe vai adicionar chamados aqui</div></div>`;
+  } else {
+    /* ── Agendados (separados, ordenados por hora) ── */
+    if (agendados.length) {
+      body += driverSec(`📅 Agendados — ${agendados.length}`);
+      body += agendados.map(driverCard).join('');
+    }
+    /* ── Imediatos ── */
+    if (imediatos.length) {
+      body += driverSec(`⚡ Imediatos — ${imediatos.length}`);
+      body += imediatos.map(driverCard).join('');
+    }
+    /* ── Concluídos ── */
+    if (concluidos.length) {
+      body += `<div style="margin-top:8px;">${driverSec(`✓ Concluídos — ${concluidos.length}`)}${concluidos.map(driverCard).join('')}</div>`;
+    }
+  }
+
+  return `
+    ${notifBarHtml()}
+    <div class="hdr">
+      <div class="hdr-inner">
+        <div class="hdr-left">
+          <span style="font-size:22px;">🚛</span>
+          <div>
+            <div class="hdr-title">Painel do Motorista</div>
+            <div class="hdr-sub">
+              <span class="status-dot" style="background:${dotColor};${dotAnim}"></span>
+              ${statusTxt}
+            </div>
+          </div>
+        </div>
+        <button class="btn-ghost" onclick="selectRole(null)">Trocar papel</button>
+      </div>
+    </div>
+    <div class="main" style="animation:fadeUp .3s ease;">${body}</div>`;
+}
+
+function viewTeam() {
+  const all  = sorted(taskArr());
+  const cnt  = {novo:0,visualizado:0,checkin:0,concluido:0};
+  all.forEach(t => cnt[t.status]++);
+  const agendados  = all.filter(t => t.type==='agendado'     && t.status!=='concluido');
+  const imediatos  = all.filter(t => t.type==='nao_agendado' && t.status!=='concluido');
+  const concluidos = all.filter(t => t.status==='concluido');
+
+  const statsHtml = [
+    {label:'Novos',        val:cnt.novo,        color:'#F59E0B'},
+    {label:'Visualizados', val:cnt.visualizado, color:'#60A5FA'},
+    {label:'Em Rota',      val:cnt.checkin,     color:'#C084FC'},
+    {label:'Concluídos',   val:cnt.concluido,   color:'#4ADE80'},
+  ].map(s=>`<div class="stat"><div class="stat-n" style="color:${s.color};">${s.val}</div><div class="stat-l">${s.label}</div></div>`).join('');
+
+  const dtField = formData.type==='agendado' ? `
+    <div class="form-group">
+      <label>Data e horário</label>
+      <input class="form-input" type="datetime-local" id="f-dt"
+        value="${esc(formData.datetime)}" oninput="formData.datetime=this.value">
+    </div>` : '';
+
+  const formHtml = showForm ? `
+    <div class="form-card">
+      <div class="form-hd">Novo Compromisso</div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Título / Tipo de serviço</label>
+          <input class="form-input" id="f-title" value="${esc(formData.title)}"
+            oninput="formData.title=this.value" placeholder="Ex: Reboque, pane seca, colisão...">
+        </div>
+        <div class="form-group">
+          <label>Endereço de origem</label>
+          <input class="form-input" id="f-addr" value="${esc(formData.address)}"
+            oninput="formData.address=this.value" placeholder="Rua, número, bairro...">
+        </div>
+        <div class="form-group">
+          <label>Tipo de chamado</label>
+          <select class="form-select" id="f-type" onchange="formData.type=this.value;render();">
+            <option value="nao_agendado" ${formData.type==='nao_agendado'?'selected':''}>⚡ Imediato / Não agendado</option>
+            <option value="agendado"     ${formData.type==='agendado'    ?'selected':''}>📅 Agendado (com hora marcada)</option>
+          </select>
+        </div>
+        ${dtField}
+        <div class="form-group">
+          <label>Observações (opcional)</label>
+          <input class="form-input" id="f-notes" value="${esc(formData.notes)}"
+            oninput="formData.notes=this.value" placeholder="Contato, veículo, detalhes...">
+        </div>
+        <div class="form-btns">
+          <button class="btn-cancel" onclick="toggleForm()">Cancelar</button>
+          <button class="btn-submit" onclick="addTask()">Adicionar Chamado</button>
+        </div>
+      </div>
+    </div>` : `<button class="add-btn" onclick="toggleForm()">+ Adicionar Chamado</button>`;
+
+  let listHtml = '';
+  if (!all.length) {
+    listHtml = `<div class="empty"><div class="empty-ico">📋</div><div class="empty-title">Nenhum chamado ainda</div><div class="empty-desc">Adicione o primeiro compromisso acima</div></div>`;
+  } else {
+    if (agendados.length)  listHtml += `<div class="sec-block"><p class="sec-label">📅 Agendados (${agendados.length})</p>${agendados.map(teamCard).join('')}</div>`;
+    if (imediatos.length)  listHtml += `<div class="sec-block"><p class="sec-label">⚡ Imediatos (${imediatos.length})</p>${imediatos.map(teamCard).join('')}</div>`;
+    if (concluidos.length) listHtml += `<hr class="div"><div class="sec-block"><p class="sec-label">✓ Concluídos (${concluidos.length})</p>${concluidos.map(teamCard).join('')}</div>`;
+  }
+
+  return `
+    ${notifBarHtml()}
+    <div class="hdr">
+      <div class="hdr-inner">
+        <div class="hdr-left">
+          <span style="font-size:22px;">👥</span>
+          <div>
+            <div class="hdr-title">Painel da Equipe</div>
+            <div class="hdr-sub">${all.length} chamado${all.length!==1?'s':''} registrado${all.length!==1?'s':''}</div>
+          </div>
+        </div>
+        <button class="btn-ghost" onclick="selectRole(null)">Trocar papel</button>
+      </div>
+    </div>
+    <div class="main" style="animation:fadeUp .3s ease;">
+      <div class="stats">${statsHtml}</div>
+      ${formHtml}
+      ${listHtml}
+    </div>`;
+}
+
+/* ─── Render ─────────────────────────────────────────────────── */
+function render() {
+  const app = document.getElementById('app');
+  if (!app) return;
+  if (!role)            { app.innerHTML = viewRoleSelect(); return; }
+  if (role==='driver')  { app.innerHTML = viewDriver();    return; }
+  app.innerHTML = viewTeam();
+}
+
+/* ─── Actions ───────────────────────────────────────────────── */
+function selectRole(r) {
+  role = r;
+  if (r) { localStorage.setItem('guincho_role', r); requestNotif(); }
+  else     localStorage.removeItem('guincho_role');
+  render();
+}
+
+function toggleForm() { showForm = !showForm; render(); }
+
+function addTask() {
+  // Sync any late oninput values
+  const sync = {title:'f-title', address:'f-addr', datetime:'f-dt', notes:'f-notes'};
+  Object.entries(sync).forEach(([k,id]) => { const el=document.getElementById(id); if(el) formData[k]=el.value; });
+
+  if (!formData.title.trim() || !formData.address.trim()) {
+    toast('⚠️','Campos obrigatórios','Preencha o título e o endereço.'); return;
+  }
+  if (formData.type==='agendado' && !formData.datetime) {
+    toast('⚠️','Data obrigatória','Informe a data e horário do agendamento.'); return;
+  }
+  skipNextNotif = true;
+  const ref = tasksRef.push();
+  ref.set({
+    id:        ref.key,
+    title:     formData.title.trim(),
+    address:   formData.address.trim(),
+    type:      formData.type,
+    datetime:  formData.datetime,
+    notes:     formData.notes.trim(),
+    status:    'novo',
+    createdAt: Date.now(),
+  });
+  formData = emptyForm();
+  showForm  = false;
+}
+
+function advance(id) {
+  const t = tasks[id];
+  if (!t || !NEXT[t.status]) return;
+  skipNextNotif = true;
+  tasksRef.child(id).update({ status: NEXT[t.status] });
+}
+
+function removeTask(id) {
+  if (!confirm('Remover este chamado?')) return;
+  skipNextNotif = true;
+  tasksRef.child(id).remove();
+}
+
+/* ─── Firebase Listener (event-driven, not polling) ─────────── */
+function detectChanges(prev, curr) {
+  Object.keys(curr).forEach(id => {
+    if (!prev[id]) {
+      const m = NOTIF_MSGS.novo_task(curr[id]);
+      toast(m.icon, m.title, m.body); sendNotif(m.title, m.body);
+    } else if (prev[id].status !== curr[id].status) {
+      const maker = NOTIF_MSGS[curr[id].status];
+      if (maker) { const m = maker(curr[id]); toast(m.icon, m.title, m.body); sendNotif(m.title, m.body); }
+    }
+  });
+  Object.keys(prev).forEach(id => {
+    if (!curr[id]) { const m=NOTIF_MSGS.removed(prev[id]); toast(m.icon,m.title,m.body); }
+  });
+}
+
+/* ─── Notifications ─────────────────────────────────────────── */
+function requestNotif() {
+  if ('Notification' in window && Notification.permission==='default') {
+    Notification.requestPermission().then(() => render());
+  }
+}
+function sendNotif(title, body) {
+  if ('Notification' in window && Notification.permission==='granted') {
+    try { new Notification(title, { body, icon:'https://em-content.zobj.net/source/google/387/truck_1f69a.png' }); } catch(e) {}
+  }
+}
+
+/* ─── In-App Toast ───────────────────────────────────────────── */
+function toast(icon, title, body) {
+  const c = document.getElementById('toast-container');
+  if (!c) return;
+  const d = document.createElement('div');
+  d.className = 'toast';
+  d.innerHTML = `<span class="toast-icon">${icon}</span><div><div class="toast-title">${esc(title)}</div><div class="toast-body">${esc(body)}</div></div>`;
+  c.appendChild(d);
+  setTimeout(() => { d.style.opacity='0'; setTimeout(() => d.remove(), 400); }, 4000);
+}
+
+/* ─── Bootstrap ─────────────────────────────────────────────── */
+if (firebaseConfig.apiKey.startsWith('SUA_')) {
+  document.getElementById('app').innerHTML = viewSetup();
+} else {
+  firebase.initializeApp(firebaseConfig);
+  const db       = firebase.database();
+  const tasksRef = db.ref('tasks');
+
+  tasksRef.on('value', (snap) => {
+    const newTasks = snap.val() || {};
+    if (prevSnap !== null && !skipNextNotif) detectChanges(prevSnap, newTasks);
+    skipNextNotif = false;
+    prevSnap = newTasks;
+    tasks    = newTasks;
+    render();
+  });
+
+  // Make tasksRef available to action functions
+  window.tasksRef = tasksRef;
+}
+</script>
+</body>
+</html>
